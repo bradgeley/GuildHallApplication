@@ -1,0 +1,150 @@
+Is it possible to call constructor and destructor explicitly?
+All the days of the afflicted are evil but he 
+that is of a merry heart hath a continual feast.
+Proverbs 15:15 (Bible) 
+
+Constructor is a special member function that is automatically called by compiler when object is created and destructor is also special member function that is also implicitly called by compiler when object goes out of scope. They are also called when dynamically allocated object is allocated and destroyed, new operator allocates storage and calls constructor, delete operator calls destructor and free the memory allocated by new.
+
+Is it possible to call constructor and destructor explicitly?
+Yes, it is possible to call special member functions explicitly by programmer. Following program calls constructor and destructor explicitly.
+
+filter_none
+edit
+play_arrow
+
+brightness_4
+#include <iostream> 
+using namespace std; 
+  
+class Test 
+{ 
+public: 
+    Test()  { cout << "Constructor is executed\n"; } 
+    ~Test() { cout << "Destructor is executed\n";  } 
+}; 
+  
+int main() 
+{ 
+    Test();  // Explicit call to constructor 
+    Test t; // local object 
+    t.~Test(); // Explicit call to destructor 
+    return 0; 
+}
+Output:
+
+
+
+
+Constructor is executed
+Destructor is executed
+Constructor is executed
+Destructor is executed
+Destructor is executed 
+When the constructor is called explicitly the compiler creates a nameless temporary object and it is immediately destroyed. That’s why 2nd line in the output is call to destructor.
+Here is a conversation between me and Dr. Bjarne Stroustrup via mail about this topic:
+
+Me: Why C++ allows to call constructor explicitly? Don’t you think that this shouldn’t be?
+Dr. Bjarne: No. temporary objects of the class types are useful.
+
+Section 12.4/14 of C++ standard says that
+Once a destructor is invoked for an object, the object no longer exists; the behavior is undefined if the destructor is invoked for an object whose lifetime has ended [Example: if the destructor for an automatic object is explicitly invoked, and the block is subsequently left in a manner that would ordinarily invoke implicit destruction of the object, the behavior is undefined. —end example ].
+
+As mentioned here, we should never call destructor explicitly on local (automatic) object, because really bad results can be acquired by doing that.
+
+Local objects are automatically destroyed by compiler when they go out of scope and this is the guarantee of C++ language. In general, special member functions shouldn’t be called explicitly.
+Constructor and destructor can also be called from the member function of class. See following program:
+
+filter_none
+edit
+play_arrow
+
+brightness_4
+#include <iostream> 
+using namespace std; 
+  
+class Test 
+{ 
+public: 
+    Test()  { cout << "Constructor is executed\n"; } 
+    ~Test() { cout << "Destructor is executed\n";  } 
+    void show()  {  Test();  this->Test::~Test();  } 
+}; 
+  
+int main() 
+{ 
+    Test t; 
+    t.show(); 
+    return 0; 
+} 
+Output:
+
+Constructor is executed
+Constructor is executed
+Destructor is executed
+Destructor is executed
+Destructor is executed
+Explicit call to destructor is only necessary when object is placed at particular location in memory by using placement new. Destructor should not be called explicitly when the object is dynamically allocated because delete operator automatically calls destructor.
+
+As an exercise predict the output of following program:
+
+filter_none
+edit
+play_arrow
+
+brightness_4
+#include <iostream> 
+using namespace std; 
+  
+class Test 
+{ 
+public: 
+    Test()  { cout << "Constructor is executed\n"; } 
+    ~Test() { cout << "Destructor is executed\n";  } 
+    friend void fun(Test t); 
+}; 
+void fun(Test t) 
+{ 
+    Test(); 
+    t.~Test(); 
+} 
+int main() 
+{ 
+    Test(); 
+    Test t; 
+    fun(t); 
+    return 0; 
+} 
+Sources:
+http://www.parashift.com/c++-faq/dont-call-dtor-on-local.html
+http://www.parashift.com/c++-faq/placement-new.html
+http://msdn.microsoft.com/en-us/library/35xa3368.aspx
+
+This article is contributed Meet Pravasi. Please write comments if you find anything incorrect, or you want to share more information about the topic discussed above
+
+
+
+
+
+Recommended Posts:
+Order of Constructor/ Destructor Call in C++
+Difference Between Constructor and Destructor in C++
+Calling virtual methods in constructor/destructor in C++
+__attribute__((constructor)) and __attribute__((destructor)) syntaxes in C
+Explicitly Defaulted and Deleted Functions in C++ 11
+Explicitly assigning port number to client in Socket
+Difference between Call by Value and Call by Reference
+Private Destructor
+Virtual Destructor
+Pure virtual destructor in C++
+Accept system call
+pipe() System call
+A C/C++ Function Call Puzzle
+Wait System Call in C
+Can we call an undeclared function in C++?
+Article Tags : 
+C
+C++
+cpp-constructor
+Practice Tags : 
+C
+CPP
