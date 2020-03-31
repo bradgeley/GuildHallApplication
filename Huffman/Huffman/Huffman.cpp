@@ -1,23 +1,29 @@
-// Huffman.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
-#include <iostream>
 #include <fstream>
-#include <map>
+#include <iostream>
 #include <list>
-#include <bitset>
 #include <stack>
-#include <assert.h>
+
 using namespace std;
+
 
 
 /* Constants */
 
-const string TEXT = "enwik8";
+const size_t MAP_SIZE = 256;
+
+/* File Names */
+
+const string TEXT = "Text.txt";
 const string CMP = "Compressed.txt"; //See what I did there?
 const string DECOMPRESSED = "Decompressed.txt";
+
+/* Sentinels for serializing/deserializing the binary tree */
+
 const unsigned char LEAF = 1;
 const unsigned char NODE = 0;
+const unsigned char DATA = 2;
+
+
 
 
 /* Custom Classes */
@@ -28,7 +34,7 @@ const unsigned char NODE = 0;
    A node has two pointers to other Nodes or Leafs. A leaf's pointers are nullptr,
    and contains a character.
 
-   I could have created subclasses for Nodes and Leafs, but I simply used a boolean
+   I could have created subclasses for Nodes and Leafs, but I decided to use a boolean
    to determine which was which.
    */
 
@@ -37,7 +43,7 @@ public:
 
     /* Creating a node with a character means it is a Leaf node */
 
-    Node(char ch, size_t freq): 
+    Node(unsigned char ch, size_t freq): 
         ch(ch), freq(freq) {
         isLeaf = true;
     }
@@ -45,7 +51,7 @@ public:
     /* Creating a node with a right/left pointer means 
        it is a parent Node and thus not a Leaf */
 
-    Node(size_t freq, Node* left, Node* right): 
+    Node(unsigned int freq, Node* left, Node* right): 
         freq(freq), left(left), right(right) {
         isLeaf = false;
     }
@@ -61,32 +67,41 @@ public:
     /* Variables */
 
     bool isLeaf = false;
-    char ch = 0;
-    size_t freq = 0;
+    unsigned char ch = 0;
+    unsigned int freq = 0;
     Node* left = nullptr;
     Node* right = nullptr;
 
     /* Operators for sorting function */
+
     bool operator > (Node const& n) { return freq > n.freq; }
     bool operator < (Node const& n) { return freq < n.freq; }
     bool operator >= (Node const& n) { return freq >= n.freq; }
     bool operator <= (Node const& n) { return freq <= n.freq; }
+
+    /* Functions */
+
+    /* destroyNode 
+       -----------
+       Destroys all child nodes before self. 
+       */
+
+    static void destroyNode(Node* node) {
+        if (node->isLeaf) {
+            delete node;
+        }
+        else {
+            destroyNode(node->left);
+            destroyNode(node->right);
+            delete node;
+        }
+    }
 };
 
-/* destroyNode 
-   -----------
-   Recursive function for destroying a tree of Nodes */
-
-void destroyNode(Node* node) {
-    if (node->isLeaf) {
-        delete node;
-    }
-    else {
-        destroyNode(node->left);
-        destroyNode(node->right);
-        delete node;
-    }
-}
+/* Tree
+   ----
+   Simply stores a pointer to the root of the tree
+   */
 
 class Tree {
 public:
@@ -97,86 +112,102 @@ public:
         first(first) {}
 
     ~Tree() {
-        destroyNode(first);
+        Node::destroyNode(first);
     }
 
     /* Variables */
 
     Node* first = nullptr;
 
-    /* Tree.getLength() 
-       ----------------
-       Wrapper function for getLengthOfNode(Node* n)
-       */
-
-    unsigned char getLength() {
-        return getLengthOfNode(first);
-    }
-
-private:
-
-    /* Tree.getLength()
-       ----------------
-       Recursively adds the length of the branches of the binary tree's nodes
-       */
-    unsigned char getLengthOfNode(Node* n) {
-        if (n == nullptr) return 0;
-        unsigned char total = 1;
-        if (first->left != nullptr) {
-            total += getLengthOfNode(n->left);
-        }
-        if (first->right != nullptr) {
-            total += getLengthOfNode(n->right);
-        }
-        return total;
-    }
 };
 
+
+
+
+/* Frequency Map Functions */
+
+/* fillFrequencyMap
+   ----------------
+   Maps each byte in the file to its frequency. We must first
+   get the byte as a char, then cast to an unsigned char due to
+   the istream >> (unsigned char) not picking up certain ascii 
+   values, including returns and spaces.
+*/
+
+void fillFrequencyMap(ifstream& infile, unsigned int freqMap[]) {
+    infile.open(TEXT, ios::binary);
+    cout << "Filling Frequency Map..." << endl;
+    char ch;
+    unsigned char byte;
+    while (infile.get(ch)) {
+        byte = (unsigned char) ch;
+        freqMap[byte]++;
+    }
+    infile.close();
+    cout << "Map complete." << endl;
+}
 
 
 
 
 /* Binary Tree Functions */
 
-
-/* createBinaryTree(Tree& t, map<char, size_t> m)
-   ----------------------------------------------
-   1. Creates the binary tree that we use to find unique bit values
+/* createBinaryTree
+   ----------------
+   Creates the binary tree that we use to find unique bit values
    for each byte of data.
+
+   Takes a map of each character value (the index in the array) to a frequency.
+   All of the higher frequency nodes will be added higher in the tree. Lower
+   frequency values are added first, meaning they are deeper into the tree
+   and will have longer bit representations.
    */
 
-void createBinaryTree(Tree& binaryTree, map<char, size_t>& freqMap) {
+void createBinaryTree(Tree& binaryTree, unsigned int freqMap[]) {
+    cout << "Creating Binary Tree..." << endl;
 
-    //Iterate through the map and make a Node for each one
+    /* Iterate through the map and make a Node for each one */
+
     list<Node> nodes;
-    for (map<char, size_t>::iterator it = freqMap.begin(); it != freqMap.end(); ++it) {
-        nodes.push_back(Node(it->first, it->second));
+    for (int i = 0; i < MAP_SIZE; i++) {
+        unsigned char ch = (unsigned char)i;
+        if (freqMap[ch] != 0) {
+            nodes.push_back(Node(ch, freqMap[ch]));
+        }
     }
 
-    //Binary Tree Creation Loop:
+    /* Debugging Variable */
+
+    int treeNodes = 0;
+
+    /* Binary Tree Creation Loop */
+
     while (nodes.size() > 1) {
 
-        //Sort elements lowest to highest
+        //Sort elements lowest to highest by frequency
         nodes.sort();
 
-        //Take the 2 first elements
+        //Take the 2 first, lowest frequency elements
         Node* first = new Node(nodes.front());
+        treeNodes++;
         nodes.pop_front();
         Node* second = new Node(nodes.front());
+        treeNodes++;
         nodes.pop_front();
 
-        //Create new Node with these as its children, with combined frequency of children
-        //Using address here is a stack address and will not be valid outside of this scope
-        //So I need to do all of the tree operations in this function
-        Node parent = new Node(first->freq + second->freq, first, second);
-
-        //3. Add new Node back to the list
+        //Add back a new Node with the combined frequency of the children
+        Node parent(first->freq + second->freq, first, second);
         nodes.push_back(parent);
     }
-    binaryTree.first = new Node(nodes.front());
-    nodes.pop_front();
-}
 
+    /* Set the root of the tree */
+
+    binaryTree.first = new Node(nodes.front());
+    nodes.pop_front(); //now empty
+    treeNodes++;
+
+    cout << "Done. Nodes in tree: " << treeNodes << endl;
+}
 
 
 
@@ -184,7 +215,7 @@ void createBinaryTree(Tree& binaryTree, map<char, size_t>& freqMap) {
 /* Compression Functions */
 
 
-/* getBinaryForChar 
+/* findBitRepOfByte 
    ----------------
    Recursively traverses tree, keeping track of the resulting
    binary representation of the result, as well as the length
@@ -192,15 +223,16 @@ void createBinaryTree(Tree& binaryTree, map<char, size_t>& freqMap) {
 
    The bit representation of the number could end up being quite long. With
    an entirely inefficient binary tree, the 255 possible bytes could be spread
-   out poorly such that it takes 64+ Nodes to reach one value. Is this necessary?
-   So I use a 64-bit unsigned long long to store the potential bit representation.
+   out poorly such that it takes 8+ Node traversals to reach one value.
+   So I use an u_integer to store the bit representation, rather than a u_char
+   but I am not sure if this is totally necessary.
 
    I store the potential bit representation in temp, and the potential size in nBitsTemp.
-   When I get a match, I return those results into result and nBits, which are passed
-   by reference.
+
+   When I get a match to a Leaf, I return those results into bitRepResult and nBitsResult.
    */
 
-void getBinaryForChar(const char c, Node* node, unsigned long long bitRepTemp, unsigned long long& bitRepResult, unsigned int nBitsTemp, unsigned int& nBitsResult) {
+void findBitRepOfByte(const unsigned char c, Node* node, unsigned int bitRepTemp, unsigned int& bitRepResult, unsigned int nBitsTemp, unsigned int& nBitsResult) {
     if (node->isLeaf) {
         if (node->ch == c) {
             bitRepResult = bitRepTemp;
@@ -208,11 +240,42 @@ void getBinaryForChar(const char c, Node* node, unsigned long long bitRepTemp, u
         }
     }
     else {
-        getBinaryForChar(c, node->left, bitRepTemp << 1, bitRepResult, nBitsTemp + 1, nBitsResult);
-        getBinaryForChar(c, node->right, (bitRepTemp << 1) + 1, bitRepResult, nBitsTemp + 1, nBitsResult);
+        findBitRepOfByte(c, node->left, bitRepTemp << 1, bitRepResult, nBitsTemp + 1, nBitsResult);
+        findBitRepOfByte(c, node->right, (bitRepTemp << 1) + 1, bitRepResult, nBitsTemp + 1, nBitsResult);
     }
 }
 
+/* writeNode 
+   ---------
+   Recursively writes the tree depth first, post order
+   into the open outfile.
+   */
+
+void writeNode(Node* node, ofstream& outfile) {
+    if (node->isLeaf) {
+        outfile << LEAF;
+        outfile << node->ch;
+    }
+    else {
+        writeNode(node->left, outfile);
+        writeNode(node->right, outfile);
+        outfile << NODE;
+        outfile << NODE;
+    }
+}
+
+/* writeBinaryTree
+   ---------------
+   First writes the header value that tells the decompressor
+   how many Nodes were in the original tree.
+   
+   Then serves as the wrapper for writeNode() 
+   */
+
+void writeBinaryTree(ofstream& outfile, Tree& freqTree) {
+    writeNode(freqTree.first, outfile);
+    outfile << DATA; //delimeter for knowing when the tree is over
+}
 
 /* compressFile
    ------------
@@ -224,41 +287,49 @@ void getBinaryForChar(const char c, Node* node, unsigned long long bitRepTemp, u
    Once the 8-bit mask is full, it is ready to be pushed to the compressed file.
    At the end of the file there are anywhere between 0-7 trailing 0's.
 
-   If the last mask ended with only one of the bits filled, the remaining 7 are trailing 0's
+   (e.g.) If the last mask ended with only one of the bits filled, the remaining 7 are trailing 0's
    and could be misread by the decompresser as another character. Thus we need to include
-   the number of trailing 0's in the header to the compressed file.
+   the number of trailing 0's as the last byte of data in the file.
    */
 
-void compressFile(string data, Tree& freqTree, list<unsigned char>& compressed) {
+void compressFile(ifstream& infile, ofstream& outfile, Tree& freqTree) {
     cout << "Compressing..." << endl;
-    cout << "Bytes in file: " << data.length() << endl;
+
+    infile.open(TEXT, ios::binary);
+    outfile.open(CMP, ios::binary);
+
+    writeBinaryTree(outfile, freqTree);
+
+    /* Compression Variables */
+
+    unsigned int nBytesInFile = 0;
+    unsigned int nBytesInCompressed = 0;
 
     unsigned char mask = 0b0;
     unsigned char filledBits = 0;
 
-    for (size_t i = 0; i < data.length(); i++) {
-        char currentChar = data[i];
+    char ch;
+    unsigned char byte;
 
-        //Get the binary representation of the char and the length of its bits
-        unsigned long long temp = 0, result = 0; //bits might be long due to a potentially large tree size
-        unsigned int nBits = 0, nBitsTemp = 0;
+    /* Outer Loop for receiving bytes from the uncompressed file */
 
-        //Find the bit representation for the current character recursively using the binary tree
-        if (!freqTree.first->isLeaf) {
-            getBinaryForChar(currentChar, freqTree.first, temp, result, nBitsTemp, nBits);
-        }
-        else {
-            //Special case where the root is a character. Only necessary in special case where the file is one repeated byte
-            nBits = 1;
-            result = 1;
-        }
+    while (infile.get(ch)) {
+        byte = (unsigned char)ch;
+        nBytesInFile++;
 
-        //Add the bits to the current mask
+        unsigned int tempBitRep = 0, bitRep = 0; //Values to store the bit representation of a char
+        unsigned int nBitsTemp = 0, nBits = 0; //Values that store the bit length of the bit rep
+
+        findBitRepOfByte(byte, freqTree.first, tempBitRep, bitRep, nBitsTemp, nBits);
+        if (freqTree.first->isLeaf) nBits = 1, bitRep = 1; //Special case
+
+        /* Inner loop for filling 8 bit masks */
+
         while (true) {
 
             if (filledBits == sizeof(mask) * CHAR_BIT) {
-                //Create a new empty mask ready to go
-                compressed.push_back(mask);
+                outfile << mask;
+                nBytesInCompressed++;
                 mask = 0;
                 filledBits = 0;
             }
@@ -267,37 +338,43 @@ void compressFile(string data, Tree& freqTree, list<unsigned char>& compressed) 
 
             if (nBits > unfilledBits) {
 
-                //Shift result so that unfilledBits bits remain
-                temp = result >> (nBits - unfilledBits);
+                /* Transfer all the bits we can to the current mask,
+                   and keep track of how many are left. */
 
-                //Update mask
-                mask = mask | (unsigned char)temp;
+                tempBitRep = bitRep >> (nBits - unfilledBits);
+
+                mask = mask | (unsigned char)tempBitRep;
                 filledBits += unfilledBits;
-
-                //Update nBits. We filled all remaining bits
-                //So the nBits needed to add will go down by that amount
                 nBits -= unfilledBits;
 
-                //Get rid of the bits from result 
-                //that we just added to the mask
-                result = result << (sizeof(result) * CHAR_BIT - nBits);
-                result = result >> (sizeof(result) * CHAR_BIT - nBits);
+                bitRep = bitRep << (sizeof(bitRep) * CHAR_BIT - nBits);
+                bitRep = bitRep >> (sizeof(bitRep) * CHAR_BIT - nBits);
             }
             else if (nBits <= unfilledBits) {
 
-                //Shift the bits up so that they align in the mask
-                temp = result << (unfilledBits - nBits);
-                mask = mask | (unsigned char)temp;
+                /* Transfer all bits to the current mask */
 
-                //Update filled bits to represent what we just filled
+                tempBitRep = bitRep << (unfilledBits - nBits);
+                mask = mask | (unsigned char)tempBitRep;
                 filledBits += nBits;
-                break;
+                break; //We've filled all we can with the current byte
             }
         }
     }
-    compressed.push_back(mask);
-    compressed.push_front((unsigned char) (8 - filledBits)); //tells me how many 0s are at the end
-    cout << "Compressed file to: " << compressed.size() - 1 << " bytes (without header or tree)" << endl;
+
+    /* Put the very last mask into the outfile, as well as the trailing zeros footer */
+
+    outfile << mask;
+    nBytesInCompressed++;
+    unsigned char trailingZeros = CHAR_BIT - filledBits;
+    outfile << trailingZeros;
+
+    cout << "Bytes in file: " << nBytesInFile << endl;
+    cout << "Compressed file to: " << nBytesInCompressed << " bytes (without headers or tree (~1KB))" << endl;
+    cout << "Compression ratio: " << (double) nBytesInCompressed / nBytesInFile * 100 << "%" << endl;
+
+    infile.close();
+    outfile.close();
 }
 
 
@@ -306,255 +383,188 @@ void compressFile(string data, Tree& freqTree, list<unsigned char>& compressed) 
 /* Decompression Functions */
 
 
-void copyCompressedDataToList(ifstream& infile, list<unsigned char>& compressed) {
-    char ch;
-    unsigned int nBytesCopied = 0;
-    while (infile.get(ch)) {
-        compressed.push_back(ch);
-        nBytesCopied++;
-    }
-}
-
-/* Reconstruct the tree from the file.
-   If you read a leaf, put it on a stack, if you read a node, take	2
-   children from the stack and put the node back on.This should leave you
-   just the root on the stack when you are done.  
+/* DecompressTree
+   --------------
+   Reconstructs the binary tree from the file using a stack.
+   If you read a leaf, put it on a stack, if you read a node, take 2
+   children from the stack and put the node back on.
    
    This function is given a list that contains blocks of chars in this format:
 
-   | 0 or 1 |   |  data  |
+   | sentinel |   |  char  |
 
-   If we read a 0, then we copy the data as a Node,
-   If we read a 1, we copy the data as a Leaf
+   If we read a 0 (NODE), then we copy the data as a Node and ignore the char,
+   If we read a 1 (LEAF), we copy the data as a Leaf and grab the char
+   If we read a 2 (DATA), then the tree is finished and the data begins
    */
 
-void decompressTree(list<unsigned char>& compressed, Tree& freqTree, unsigned char treeLength) {
+void decompressTree(ifstream& infile, Tree& freqTree) {
     stack<Node*> s;
-    int count = 0;
-    for (list<unsigned char>::iterator it = compressed.begin(); count < treeLength; count++) {
-        if (*it == LEAF) {
-            it++;
-            compressed.pop_front(); //pop the leaf sentinel
-            Node* leaf = new Node(*it, 0); //frequency, or the second parameter here, does not matter in this tree
+    int numNodesInReconstructedTree = 0;
+    char ch;
+    unsigned char sentinel, byte;
+    while (true) {
+
+        //get the sentinel for the next Node
+        infile.get(ch);
+        sentinel = (unsigned char)ch;
+        
+        if (sentinel == LEAF) {
+            //get the byte after the sentinel value
+            infile.get(ch);
+            byte = (unsigned char)ch;
+            Node* leaf = new Node(byte, 0); //frequency, or the second parameter here, does not matter in this tree
+            numNodesInReconstructedTree++;
             s.push(leaf);
-            it++;
-            compressed.pop_front(); //pop char off the list
         }
-        else {
-            it++;
-            compressed.pop_front(); //pop the node sentinel
+        else if (sentinel == NODE) {
+            //get the next value which is not used.
+            infile.get(ch);
             Node* right = s.top(); s.pop();
             Node* left = s.top(); s.pop();
             Node* node = new Node(0, left, right); //leaving freq empty
+            numNodesInReconstructedTree++;
             s.push(node);
-            it++;
-            compressed.pop_front(); // pop the data off the list
+        }
+        else if (sentinel == DATA) {
+            break;
         }
     }
-    if (s.size() == 1) {
-        freqTree.first = s.top();
-    }
-    if (s.size() == 2) {
-        Node* right = s.top(); s.pop();
-        Node* left = s.top(); s.pop();
-        Node* node = new Node(0, left, right); //leaving freq empty
-        s.push(node);
-        freqTree.first = s.top();
-    }
+    cout << "Reconstructed Tree Nodes: " << numNodesInReconstructedTree << endl;
+    freqTree.first = s.top();
 }
 
-void decompressFile(ifstream& inf, Tree& freqTree, ofstream& of) {
+/* DecompressFile
+   --------------
+   Decompresses the binary tree and uses it to step bit by bit through a file.
+   This process is rather slow for large files since we look through the whole
+   tree for each bit we find, and gather data only one byte at a time.
+
+   The data in the file contains a number of trailing zeros, the number of which
+   is contained in a 1 byte footer at the end of the file. Once we read this,
+   we know how many zeros to ignore at the end of the file.
+   */
+
+void decompressFile(ifstream& infile, ofstream& outfile, Tree& freqTree) {
     cout << "Decompressing..." << endl;
 
-    inf.clear();
-    inf.open(CMP, std::ios::binary);
-    list<unsigned char> compressed;
-    copyCompressedDataToList(inf, compressed);
-    inf.close();
+    infile.open(CMP, ios::binary);
+    outfile.open(DECOMPRESSED, ios::binary);
 
-    of.open(DECOMPRESSED, std::ios::binary);
+    decompressTree(infile, freqTree);
 
-    //Gather header data
-    unsigned char numZerosAtEnd = compressed.front();
-    compressed.pop_front();
-    unsigned char treeLength = compressed.front();
-    compressed.pop_front();
+    /* Gather footer data (last 1 byte), then reset back to where we were */
 
-    decompressTree(compressed, freqTree, treeLength);
+    streampos currentPos = infile.tellg();
+    infile.seekg(-1, infile.end);
+    unsigned int length = (unsigned int) infile.tellg();
+    char trailingZeros;
+    infile.get(trailingZeros);
+    infile.seekg(currentPos);
 
-    bool endOfFile = false; //bool for keeping track of when we have reached the last byte of compressed data
+    /* Debugging variable to ensure the output has the same bytes as input */
+
+    unsigned int decompressedBytes = 0;
+
+    /* Special case if the file input was only one character repeated and thus our tree is only one node */
 
     if (freqTree.first->isLeaf) {
-        //Handle special case of only one byte repeated once or many times
-        int numRepeatedChars = compressed.size() * 8 - numZerosAtEnd;
+        unsigned char ch = freqTree.first->ch;
+        int bytesOfData = length - (int) infile.tellg();
+        int numRepeatedChars = bytesOfData * CHAR_BIT - trailingZeros;
+        decompressedBytes = numRepeatedChars;
         for (int i = 0; i < numRepeatedChars; i++) {
-            of.put(freqTree.first->ch);
+            outfile << ch;
         }
-        compressed.clear();
-        endOfFile = true;
-    }
-
-    /* Main decompression loop for turning bits back into characters */
-
-    unsigned char index = 0; //index of bit we are looking at in the current byte
-
-    while (compressed.size() > 0) {
-
-        //Reset search location to top of tree
-        Node* currentNode = freqTree.first;
-
-        while (!currentNode->isLeaf) {
-
-            if (index == CHAR_BIT && compressed.size() != 1) {
-                compressed.pop_front();
-                index = 0;
-            }
-
-            if (compressed.size() <= 1) {
-                if (CHAR_BIT - index == numZerosAtEnd) {
-                    endOfFile = true;
-                    compressed.pop_front();
-                    break;
-                }
-            }
-
-            unsigned char bits = compressed.front();
-            unsigned char currentBit = bits;
-            currentBit <<= index;
-            currentBit >>= (CHAR_BIT - 1);
-
-            if (currentBit == 1) {
-                currentNode = currentNode->right;
-            }
-            else if (currentBit == 0) {
-                currentNode = currentNode->left;
-            }
-            index++;
-        }
-        //At a leaf, now reset
-        if (!endOfFile) {
-            char ch = currentNode->ch;
-            of.put(ch);
-        }
-
-    }
-    of.close();
-}
-
-
-
-
-/* Writing Output to Compressed.txt */
-
-void writeNode(Node* node, ofstream& outfile) {
-    if (node->isLeaf) {
-        outfile.put(LEAF);
-        outfile.put(node->ch);
     }
     else {
-        writeNode(node->left, outfile);
-        writeNode(node->right, outfile);
-        outfile.put(NODE);
-        outfile.put((unsigned char) node->freq);
+
+        /* Decompression Variables */
+
+        char ch;
+        unsigned char byte;
+        unsigned char index = CHAR_BIT; //index of the bit we are looking at in the current byte
+
+        /* Outer Loop that searches each bit representation in the file */
+
+        while (infile.tellg() <= length) {
+            Node* currentNode = freqTree.first; //Reset search location to top of tree
+
+            /* Inner loop that searches binary tree until hitting a leaf */
+
+            while (!currentNode->isLeaf) {
+                if (index == CHAR_BIT) {
+                    //if the index reaches 8, we need to gather a new byte of data
+                    infile.get(ch);
+                    byte = (unsigned char)ch;
+                    index = 0;
+                }
+
+                if (infile.tellg() == length && CHAR_BIT - index == trailingZeros) {
+                    //If we are at the end of the file, then (8 - index) = trailingZeros
+                    infile.get(ch);
+                    byte = (unsigned char)ch;
+                    break;
+                }
+
+                /* Isolate the bit at index */
+
+                unsigned char currentBit = byte;
+                unsigned char indexBit = (1 << (CHAR_BIT - 1 - index));
+                currentBit &= indexBit;
+
+                /* Step further into the tree based on that bit */
+
+                if (currentBit >= 1) {
+                    currentNode = currentNode->right;
+                }
+                else if (currentBit == 0) {
+                    currentNode = currentNode->left;
+                }
+                index++;
+            }
+
+            /* A leaf has been found */
+
+            if (infile.tellg() <= length) {
+                unsigned char correctChar = currentNode->ch;
+                outfile << correctChar;
+                decompressedBytes++;
+            }
+        }
     }
-}
 
-//Wrapper function for recursive writing of Nodes
-void writeBinaryTree(ofstream& outfile, Tree& freqTree) {
-    writeNode(freqTree.first, outfile);
-}
+    cout << "Size of decompressed file: " << decompressedBytes << endl;
 
-/*
-    I first need to figure out how many chars length the tree will be,
-    and insert that into the list first.
-
-    The data itself will have a single char header that tells me how many
-    trailing 0's are in the last byte of data.
-
-    The data will be written to the file as follows:
-
-    |Trailing 0's(1 byte)|TreeLength(1 byte)|Tree Data|CompressedData|
-*/
-
-void writeCompressedFile(ofstream& outfile, Tree& freqTree, list<unsigned char>& compressed) {
-    outfile.open(CMP, std::ios::binary);
-
-    //Compressed list already contains the trailing zeros at the front
-    unsigned char trailingZeros = compressed.front();
-    compressed.pop_front();
-    outfile.put(trailingZeros);
-
-    unsigned char treeLength = freqTree.getLength(); //length = the number of nodes in the tree
-    outfile.put(treeLength);
-
-    //Copy binary tree data
-    writeBinaryTree(outfile, freqTree);
-
-    //Copy compressed data
-    for (list<unsigned char>::iterator it = compressed.begin(); it != compressed.end(); it++) {
-        unsigned char c = *it;
-        outfile.put(c);
-    }
-
+    infile.close();
     outfile.close();
 }
 
 
 
 
-
-/* fillFrequencyMap 
-   ----------------
-   Maps each byte in the file to its frequency, while copying
-   the entire file into a string.
-*/
-
-void fillFrequencyMap(ifstream& infile, string& out, map<char, size_t>& freqMap) {
-    infile.open(TEXT, std::ios::binary);
-    char ch;
-    while (infile.get(ch)) {
-        out += ch;
-        if (freqMap.find(ch) == freqMap.end()) {
-            //character not yet in the map
-            freqMap.insert(pair<char, int>(ch, 1));
-        }
-        else {
-            //increment the frequency of that byte
-            (freqMap.find(ch)->second)++;
-        }
-    }
-    infile.close();
-}
-
-
-
+/* main 
+   ----
+   Compresses an input file given by TEXT, and compresses it
+   into CMP, only to decompress it back into DECOMPRESSED.
+   */
 
 int main()
 {
     ifstream infile;
     ofstream outfile;
-    string fileAsString;
     
-    //Create the map of characters to their frequency
-    map<char, size_t> freqMap;
-    fillFrequencyMap(infile, fileAsString, freqMap);
+    unsigned int freqMap[MAP_SIZE] = { 0 };
+    fillFrequencyMap(infile, freqMap);
 
-    //Now create binary tree from the values calulated
     Tree freqTree;
     createBinaryTree(freqTree, freqMap);
 
-    //Now loop through the string of the file and replace the bytes with the bits
-    list<unsigned char> compressed;
-    compressFile(fileAsString, freqTree, compressed);
+    compressFile(infile, outfile, freqTree);
+    freqTree.~Tree();
+    infile.clear(), outfile.clear();
 
-    //Write all compressed info and tree to a file
-    writeCompressedFile(outfile, freqTree, compressed);
-
-    //Completely reconstruct the binary tree and the file from the compressed data
-    Tree dFreqTree;
-    ifstream cmpInfile;
-    ofstream decompressed;
-    decompressFile(cmpInfile, dFreqTree, decompressed);
+    decompressFile(infile, outfile, freqTree);
 
     cout << "Done. Results are in " << DECOMPRESSED << endl;
 }
