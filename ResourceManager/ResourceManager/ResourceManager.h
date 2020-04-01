@@ -1,148 +1,118 @@
 #pragma once
-#include "Resource.h"
-#include <string>
-#include <fstream>
+
+#include "Node.h"
 
 using namespace std;
+
+
 
 /* Resource Manager
    ----------------
    Keeps track of a list of resources, and is responsible
-   for the logic of adding and deleting resources.
-   */
+   for the logic of adding and deleting resources, as well
+   as printing itself and reading a file of formatted input.
+
+   Resources themselves will keep track of their dependencies
+   on other resources, which they do by pointing back to
+   the Nodes on this resource manager's list.
+*/
+
+
 
 class ResourceManager {
 public:
 
     /* Constructor/Destructor */
 
-    ResourceManager() {
-        res = new list<Resource*>();
-    }
+    ResourceManager();
 
-    ~ResourceManager() {
-        for (list<Resource*>::iterator it = res->begin(); it != res->end(); it++) {
-            delete* it;
-        }
-        delete res;
-    }
+    ~ResourceManager();
 
 private:
-    list<Resource*>* res;
+
+    list<Node*>* resources;
 
 public:
-    bool containsResource(string resourceName) {
-        for (list<Resource*>::iterator it = res->begin(); it != res->end(); it++) {
-            Resource* node = *it;
-            if (node->getName() == resourceName) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    void addResource(string name) {
-        if (!containsResource(name)) {
-            res->push_back(new Resource(name));
-        }
-    }
+    /* containsResource 
+       ----------------
+       Returns true if a resource of the given name appears
+       in the current list of resources.
+    */
 
-    void addResource(string name, string nameOfDependency) {
-        if (!containsResource(name)) {
-            res->push_back(new Resource(name));
-        }
-        if (!containsResource(nameOfDependency)) {
-            res->push_back(new Resource(nameOfDependency));
-        }
-        Resource* dep = getResource(nameOfDependency);
-        Resource* res = getResource(name);
-        if (!res->containsDependency(nameOfDependency)) {
-            res->addDependency(dep);
-        }
-    }
+    bool containsResource(string resourceName) const;
 
-    Resource* getResource(string resourceName) {
-        for (list<Resource*>::iterator it = res->begin(); it != res->end(); it++) {
-            Resource* node = *it;
-            if (node->getName() == resourceName) {
-                return node;
-            }
-        }
-        return nullptr;
-    }
 
-    void remResource(string name) {
-        list<Resource*>::iterator it;
-        list<Resource*>::iterator toRemove;
-        for (it = res->begin(); it != res->end(); it++) {
-            Resource* r = *it;
-            if (r->getName() == name) {
-                toRemove = it;
-            }
-            if (r->containsDependency(name)) {
-                r->removeDependency(name);
-            }
-        }
-        res->erase(toRemove);
-    }
+    /* addResource
+       -----------
+       Creates new Nodes for each name given, if they do
+       not already exist. Then connects the Node with name
+       to the dependency node.
+    */
 
-    void readFile(string filename) {
-        ifstream infile;
-        try {
-            infile.open(filename);
-            string resName, depName;
-            while (infile >> resName) {
-                infile >> depName;
-                addResource(resName, depName);
-            }
-        }
-        catch (ifstream::failure f) {
-            cout << "Could not open file named: " << filename << endl;
-        }
-        for (list<Resource*>::iterator it = res->begin(); it != res->end(); it++) {
-            Resource* node = *it;
-            cout << node->getName() << endl;
-        }
-    }
+    void addResource(string name, string nameOfDependency);
 
-    void print() {
 
-        /* Declare window width */
+    /* getResource
+       -----------
+       Returns a pointer to the Node corresponding to the
+       resourceName given.
+    */  
 
-        const int MAX_NAME_LEN = 15;
-        const int totalWidth = MAX_NAME_LEN * 2 + 3;
+    const Node* getResource(string resourceName) const;
 
-        /* Print Header */
+    Node* getResource(string resourceName);
 
-        cout << endl << setw(MAX_NAME_LEN + 2) << setfill(' ') << left << "Resource" << "Dependencies" << endl;
-        cout << setw(totalWidth) << setfill('-') << "" << endl;
 
-        /* Print Resources, but only if they have dependencies */
+    /* removeResource
+       --------------
+       Removes the resource with the given name from resources. 
+       
+       However, in order to maintain a functioning resource list,
+       this function also calls each Node in the list
+       to purge that resource from its dependencies.
+    */
 
-        for (list<Resource*>::iterator it = res->begin(); it != res->end(); it++) {
+    void removeResource(string name);
 
-            Resource* node = *it;
-            string name = node->getName();
-            if (name.length() > MAX_NAME_LEN) { name = name.substr(0, MAX_NAME_LEN - 1); }
 
-            list<Resource*>* deps = node->dependencies;
+    /* readFile
+       --------
+       Reads a file of data formatted as such:
 
-            /* Print Lines */
+       resource dependency
+       resource2 dependency2
+       resource3 dependency2
 
-            if (deps->size() > 0) {
+       For each resource and dependency, create a Node if
+       one did not already exist in the list. Then connect
+       them if they are not already connected.
+    */
 
-                bool firstLine = true;
-                for (list<Resource*>::iterator d = deps->begin(); d != deps->end(); d++) {
-                    string depName = (*d)->getName();
-                    if (depName.length() > MAX_NAME_LEN) { depName = depName.substr(0, MAX_NAME_LEN - 1); }
-                    if (!firstLine) name = "";
-                    cout << setfill(' ') << "|" << left << setw(MAX_NAME_LEN) << name << "|" << setw(MAX_NAME_LEN) << depName << "|" << endl;
-                    firstLine = false;
-                }
+    void readFile(string filename);
 
-                cout << setfill('-') << setw(totalWidth) << "" << endl;
 
-            }
-        }
-    }
+    /* print
+       -----
+       Makes heavy use of <iomanip> formatters in order to
+       create an output that looks like the following:
+
+       Resources Dependencies
+       -------------------
+       |res1    |dep1    |
+       |        |dep2    |
+       -------------------
+       |res2    |dep1    |
+       |        |dep2    |
+       -------------------
+
+       Cuts down each name to be a maximum length, and does
+       not show resources with no dependencies since they are
+       currently invalid. Resources that only exist as a 
+       dependency for another Node are in this category.
+
+    */
+
+    const void print() const;
+
 };

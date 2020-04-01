@@ -147,7 +147,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FrequencyMap.cpp" />
     <ClCompile Include="Huffman.cpp" />
+    <ClCompile Include="HuffmanCompressor.cpp" />
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="Tree.cpp" />
   </ItemGroup>
@@ -158,6 +160,8 @@
     <Text Include="Text1.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FrequencyMap.h" />
+    <ClInclude Include="HuffmanCompressor.h" />
     <ClInclude Include="Node.h" />
     <ClInclude Include="Tree.h" />
   </ItemGroup>
