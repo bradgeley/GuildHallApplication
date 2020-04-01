@@ -10,6 +10,3 @@ tower workers
 tower workers
 grinder gears
 peter griffin
-andrew christensen
-kirsten christensen
-bradley christensen

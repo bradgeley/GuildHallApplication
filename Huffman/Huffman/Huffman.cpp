@@ -3,6 +3,8 @@
 #include <list>
 #include <stack>
 
+#include "Tree.h"
+
 using namespace std;
 
 
@@ -14,7 +16,7 @@ const size_t MAP_SIZE = 256;
 /* File Names */
 
 const string TEXT = "Text.txt";
-const string CMP = "Compressed.txt"; //See what I did there?
+const string CMP = "Compressed.txt";
 const string DECOMPRESSED = "Decompressed.txt";
 
 /* Sentinels for serializing/deserializing the binary tree */
@@ -22,105 +24,6 @@ const string DECOMPRESSED = "Decompressed.txt";
 const unsigned char LEAF = 1;
 const unsigned char NODE = 0;
 const unsigned char DATA = 2;
-
-
-
-
-/* Custom Classes */
-
-/* Node 
-   ----
-   Nodes for the binary tree we are using are split into two types: Nodes and Leafs
-   A node has two pointers to other Nodes or Leafs. A leaf's pointers are nullptr,
-   and contains a character.
-
-   I could have created subclasses for Nodes and Leafs, but I decided to use a boolean
-   to determine which was which.
-   */
-
-class Node {
-public:
-
-    /* Creating a node with a character means it is a Leaf node */
-
-    Node(unsigned char ch, size_t freq): 
-        ch(ch), freq(freq) {
-        isLeaf = true;
-    }
-
-    /* Creating a node with a right/left pointer means 
-       it is a parent Node and thus not a Leaf */
-
-    Node(unsigned int freq, Node* left, Node* right): 
-        freq(freq), left(left), right(right) {
-        isLeaf = false;
-    }
-
-    Node(Node* n) {
-        isLeaf = n->isLeaf;
-        ch = n->ch;
-        freq = n->freq;
-        left = n->left;
-        right = n->right;
-    }
-
-    /* Variables */
-
-    bool isLeaf = false;
-    unsigned char ch = 0;
-    unsigned int freq = 0;
-    Node* left = nullptr;
-    Node* right = nullptr;
-
-    /* Operators for sorting function */
-
-    bool operator > (Node const& n) { return freq > n.freq; }
-    bool operator < (Node const& n) { return freq < n.freq; }
-    bool operator >= (Node const& n) { return freq >= n.freq; }
-    bool operator <= (Node const& n) { return freq <= n.freq; }
-
-    /* Functions */
-
-    /* destroyNode 
-       -----------
-       Destroys all child nodes before self. 
-       */
-
-    static void destroyNode(Node* node) {
-        if (node->isLeaf) {
-            delete node;
-        }
-        else {
-            destroyNode(node->left);
-            destroyNode(node->right);
-            delete node;
-        }
-    }
-};
-
-/* Tree
-   ----
-   Simply stores a pointer to the root of the tree
-   */
-
-class Tree {
-public:
-
-    Tree() {}
-
-    Tree(Node* first):
-        first(first) {}
-
-    ~Tree() {
-        Node::destroyNode(first);
-    }
-
-    /* Variables */
-
-    Node* first = nullptr;
-
-};
-
 
 
 
