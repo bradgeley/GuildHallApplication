@@ -25,9 +25,21 @@ using namespace std;
 
 /* Constructor/Destructor */
 
+
+/* ResourceManager() 
+   -----------------
+   Creates an empty list of resources on the heap.
+*/
+
 ResourceManager::ResourceManager() {
     resources = new list<Node*>();
 }
+
+
+/* ~ResourceManager()
+   ------------------
+   Deletes each resource in the list, then the list itself.
+*/
 
 ResourceManager::~ResourceManager() {
     for (list<Node*>::iterator it = resources->begin(); it != resources->end(); it++) {
@@ -40,13 +52,13 @@ ResourceManager::~ResourceManager() {
 
 /* Methods */
 
-/* containsResource
-   ----------------
+/* resourceExists
+   --------------
    Returns true if a resource of the given name appears
    in the current list of resources.
 */
 
-bool ResourceManager::containsResource(string resourceName) const {
+bool ResourceManager::resourceExists(string resourceName) const {
     for (list<Node*>::iterator it = resources->begin(); it != resources->end(); it++) {
         Node* node = *it;
         if (node->getName() == resourceName) {
@@ -65,10 +77,10 @@ bool ResourceManager::containsResource(string resourceName) const {
 */
 
 void ResourceManager::addResource(string name, string nameOfDependency) {
-    if (!containsResource(name)) {
+    if (!resourceExists(name)) {
         resources->push_back(new Node(name));
     }
-    if (!containsResource(nameOfDependency)) {
+    if (!resourceExists(nameOfDependency)) {
         resources->push_back(new Node(nameOfDependency));
     }
     Node* dep = getResource(nameOfDependency);
@@ -83,7 +95,9 @@ void ResourceManager::addResource(string name, string nameOfDependency) {
 /* getResource
    -----------
    Returns a pointer to the Node corresponding to the
-   resourceName given.
+   resourceName given. We keep track of Nodes in a std::list
+   rather than a vector because we need the pointers to not
+   become invalidated as the list grows and shrinks.
 */
 
 const Node* ResourceManager::getResource(string resourceName) const {
@@ -167,6 +181,29 @@ void ResourceManager::readFile(string filename) {
 }
 
 
+/* saveFile
+   --------
+   Runs through all resources and prints its
+   name along with every dependency. 
+   
+   **Nodes that are "unused to will not get saved.**
+*/
+
+void ResourceManager::saveFile(string filename) {
+    ofstream outfile;
+    outfile.open(filename);
+    for (list<Node*>::const_iterator it = resources->begin(); it != resources->end(); it++) {
+        Node* node = (*it);
+        const list<Node*>* deps = node->getDependencies();
+        for (list<Node*>::const_iterator d = deps->begin(); d != deps->end(); d++) {
+            Node* dep = (*d);
+            outfile << node->getName() << " " << dep->getName() << '\n';
+        }
+    }
+    outfile.close();
+}
+
+
 /* print
    -----
    Makes heavy use of <iomanip> formatters in order to
@@ -180,27 +217,98 @@ void ResourceManager::readFile(string filename) {
    |res2       |dep1       |
    |           |dep2       |
    -------------------------
-
-   Cuts down each name to be a maximum length, and does
-   not show resources with no dependencies since they are
-   currently invalid. Resources that only exist as a
-   dependency for another Node are in this category.
+   |res3       |no deps    |
+   -------------------------
+   |res4       |unusable   |
+   -------------------------
 */
 
-const void ResourceManager::print() const {
+void ResourceManager::print() const {
 
-    /* Declare window width */
+    const size_t MAX_NAME_LEN = 15;
+    const size_t totalWidth = MAX_NAME_LEN * 2 + 3;
 
-    const int MAX_NAME_LEN = 15;
-    const int totalWidth = MAX_NAME_LEN * 2 + 3;
+    printHeader(MAX_NAME_LEN, totalWidth);
+    printNormalResources(MAX_NAME_LEN, totalWidth);
+    printNoDependencyResources(MAX_NAME_LEN, totalWidth);
+    printUnusableResources(MAX_NAME_LEN, totalWidth);
+}
 
-    /* Print Header */
 
+/* printHeader 
+   -----------
+   Prints the top line and header of the UI.
+   */
+
+void ResourceManager::printHeader(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const
+{
     cout << endl << setw(MAX_NAME_LEN + 2) << setfill(' ') << left << "Resource" << "Dependencies" << endl;
     cout << setw(totalWidth) << setfill('-') << "" << endl;
+}
 
-    /* Outer loop to print all resources with a dependency */
 
+/* printUnusableResources
+   ----------------------
+   Prints all resources that have no dependencies
+   and upon which no resources depend. These are not
+   saved when the user saves the file.
+   */
+
+void ResourceManager::printUnusableResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const
+{
+    for (list<Node*>::const_iterator it = resources->begin(); it != resources->end(); it++) {
+
+        const Node* node = *it;
+        string name = node->getName();
+        if (name.length() > MAX_NAME_LEN) { name = name.substr(0, MAX_NAME_LEN - 1); } //cut off long names
+
+        bool isDependedOnBySomething = false;
+
+        for (list<Node*>::const_iterator it = resources->begin(); it != resources->end(); it++) {
+            if ((*it)->containsDependency(node->getName())) {
+                isDependedOnBySomething = true;
+            }
+        }
+        if (!isDependedOnBySomething && node->getDependencies()->size() == 0) {
+            cout << setfill(' ') << "|" << left << setw(MAX_NAME_LEN) << name << "|" << setw(MAX_NAME_LEN) << "Unconnected" << "|" << endl;
+            cout << setfill('-') << setw(totalWidth) << "" << endl;
+        }
+    }
+}
+
+
+/* printNoDependencyResources
+   --------------------------
+   Prints all resources which have no dependencies,
+   but are still depended upon, and therefore could
+   be thought of as "base" resources.
+   */
+
+void ResourceManager::printNoDependencyResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const
+{
+    for (list<Node*>::const_iterator it = resources->begin(); it != resources->end(); it++) {
+
+        const Node* node = *it;
+        string name = node->getName();
+        if (name.length() > MAX_NAME_LEN) { name = name.substr(0, MAX_NAME_LEN - 1); } //cut off long names
+
+        const list<Node*>* deps = node->getDependencies();
+
+        if (deps->size() == 0) {
+            cout << setfill(' ') << "|" << left << setw(MAX_NAME_LEN) << name << "|" << setw(MAX_NAME_LEN) << "No dependencies" << "|" << endl;
+            cout << setfill('-') << setw(totalWidth) << "" << endl;
+        }
+    }
+}
+
+
+/* printNormalResources
+   --------------------
+   Prints all resources which have dependencies.
+   */
+
+void ResourceManager::printNormalResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const
+{
     for (list<Node*>::const_iterator it = resources->begin(); it != resources->end(); it++) {
 
         const Node* node = *it;

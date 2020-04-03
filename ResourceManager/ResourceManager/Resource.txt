@@ -1,12 +1,9 @@
 gun bullets
+gun metal
 gun wood
-bullets gunpowder
 bullets metal
-bullets tools
-soldier gun
-soldier uniform
-soldier hat
-tower gun
-tower metal
+bullets gunpowder
 tower wood
-tower soldier
+tower metal
+tower gun
+tower soldiers

@@ -38,8 +38,8 @@ const size_t FrequencyMap::size() const {
    ----------------
    Maps each byte in the file to its frequency. We must first
    get the byte as a char, then cast to an uint8_t due to
-   the istream >> (uint8_t) not picking up certain ascii
-   values, including returns and spaces.
+   the istream >> (unsigned char) not picking up certain ascii
+   values, including returns and spaces. Very annoying bug.
 */
 
 void FrequencyMap::fillFrequencyMap(const string filename) {

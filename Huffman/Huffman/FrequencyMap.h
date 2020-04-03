@@ -13,6 +13,7 @@ using namespace std;
 */
 
 
+
 class FrequencyMap
 {
 private:
@@ -28,6 +29,7 @@ public:
 
 	FrequencyMap(string filename);
 
+
     /* Public Interface */
 
 
@@ -37,6 +39,12 @@ public:
     */
 
     const uint32_t getFreq(size_t index) const;
+
+
+    /* size()
+       -------
+       Returns the size of the array within the FrequencyMap.
+    */
 
     const size_t size() const;
 

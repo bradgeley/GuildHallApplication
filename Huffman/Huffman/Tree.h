@@ -31,8 +31,6 @@ public:
 
     /* Constructors/Destructor */
 
-    Tree();
-
     Tree(FrequencyMap freqMap);
 
     ~Tree();
@@ -49,7 +47,9 @@ public:
     /* bitRep
        ------
        Stores the bit representation of a byte that has been
-       found from traversing the binary tree,
+       found from traversing the binary tree, along with its length
+       since we are returning a value that has a number of
+       leading zeros.
     */
 
     struct bitRep {
@@ -62,7 +62,7 @@ public:
 
     /* writeTo
        -------
-       Stores itself into a file, depth first, post order,
+       Stores the tree into a file, depth first, post order,
        and installs a sentinel value to know when the tree
        ends.
     */
@@ -104,11 +104,6 @@ private:
        ----------------
        Creates the binary tree that we use to find unique bit values
        for each byte of data.
-
-       Takes a map of each character value (the index in the array) to a frequency.
-       All of the higher frequency nodes will be added higher in the tree. Lower
-       frequency values are added first, meaning they are deeper into the tree
-       and will have longer bit representations.
     */
 
     void createBinaryTree(FrequencyMap freqMap);

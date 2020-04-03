@@ -19,8 +19,6 @@ using namespace std;
 
 /* Constructors/Destructor */
 
-Tree::Tree() {}
-
 Tree::Tree(FrequencyMap freqMap) {
     createBinaryTree(freqMap);
 }
@@ -45,6 +43,7 @@ Tree::~Tree() {
    */
 
 void Tree::createBinaryTree(FrequencyMap freqMap) {
+
     /* Iterate through the map and make a Node for each one */
 
     list<Node> nodes;
@@ -63,7 +62,7 @@ void Tree::createBinaryTree(FrequencyMap freqMap) {
         //Sort elements lowest to highest by frequency
         nodes.sort();
 
-        //Take the 2 first, lowest frequency elements
+        //Take the 2 lowest frequency elements
         Node* first = new Node(nodes.front());
         nodes.pop_front();
         Node* second = new Node(nodes.front());
@@ -80,6 +79,7 @@ void Tree::createBinaryTree(FrequencyMap freqMap) {
     nodes.pop_front(); //now empty
 }
 
+
 /* writeTo
    -------
    Stores itself into a file, depth first, post order.
@@ -93,6 +93,7 @@ void Tree::writeTo(ofstream& outfile) {
     writeNode(outfile, root);
     outfile << DATA; //delimeter for knowing when the tree is over
 }
+
 
 /* writeNode
    ---------
@@ -140,13 +141,12 @@ void Tree::findBitRepOfByteRecursive(const uint8_t byte, Node* node, Tree::bitRe
 
 /* findBitRepOfByte
    ----------------
+   Traverse the tree and find the corresponding bitRep 
+   for that byte and return it.
+
    If the root is a leaf, this means that there is only
-   one possible byte in the file.
-
-   Therefore, we return the bitRep of 1 with a length of 1.
-
-   In all other cases, traverse the tree and find the
-   corresponding bitRep for that byte and return it.
+   one possible byte in the file. Therefore, we return 
+   the bitRep of 1 with a length of 1.
 */
 
 Tree::bitRep Tree::findBitRepOf(const uint8_t byte) {
@@ -172,7 +172,7 @@ Tree::bitRep Tree::findBitRepOf(const uint8_t byte) {
 
    This function is given a list that contains blocks of chars in this format:
 
-   |sentinel| |data| |sentinel| |data| ... etc ...   |ending sentinel|
+   |sentinel| |data| |sentinel| |data| ... etc ...   |end sentinel|
 
    For the sentinels:
    If we read a 0 (NODE), then we copy the data as a Node and ignore the char,

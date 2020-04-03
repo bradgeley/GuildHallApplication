@@ -5,12 +5,16 @@
 
 using namespace std;
 
+
+
 /* HuffmanCompressor
    -----------------
    Compresses and decompresses a file byte by byte. The
    compression ratio can be anywhere around 50% to 70%
    based on the amount of repetition or diversity in the file.
 */
+
+
 
 class HuffmanCompressor
 {

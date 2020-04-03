@@ -41,9 +41,6 @@
     <Text Include="Decompressed.txt">
       <Filter>Source Files</Filter>
     </Text>
-    <Text Include="Text1.txt">
-      <Filter>Source Files</Filter>
-    </Text>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Node.h">

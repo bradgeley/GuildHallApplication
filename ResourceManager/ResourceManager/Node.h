@@ -3,22 +3,15 @@
 #include <list>
 #include <string>
 
-using namespace std;
-
 
 
 /* Node
    ----
-   Keeps track of its own dependencies in a list on the heap.
-   The dependency pointers need to point to the actual Nodes
-   within the Resource Manager's list.
+   A Node keeps track of its own list of dependencies 
+   with several functions for manipulating that list.
 
-   Resource manager keeps track of it's full list of resources in
-   a std::list, therefore the memory addresses of those values will
-   not change as we remove and add items to it. 
-   
-   So each resources safely stores its list of connected nodes as 
-   pointers to the items in the resource manager's list.
+   If a Node points to another Node, then it is dependent
+   on that resource.
 */
 
 
@@ -28,29 +21,32 @@ public:
 
     /* Constructor/Destructor */
 
-    Node(string name);
+    Node(std::string name);
 
-    Node(string name, Node* node);
+    Node(std::string name, Node* node);
 
     ~Node();
 
 private:
 
-    /* Private Variables */
+    /* Private Data */
 
-    string name = "";
-    list<Node*>* dependencies;
+    std::string name = "";
+    std::list<Node*>* dependencies;
 
 public:
 
+
     /* Public Interface */
+
 
     /* getName
        -------
        Returns the name of the item in Node.
     */
 
-    const string getName() const;
+    const std::string getName() const;
+
 
     /* containsDependency
        ------------------
@@ -58,7 +54,8 @@ public:
        with a name matching resourceName.
     */
 
-    bool containsDependency(string resourceName) const;
+    bool containsDependency(std::string resourceName) const;
+
 
     /* addDependency
        -------------
@@ -72,20 +69,22 @@ public:
 
     void addDependency(Node* dep);
 
+
     /* removeDependency
        ----------------
        If the resource contains the dependency with depName,
        then remove the pointer from our list.
     */
 
-    void removeDependency(string depName);
+    void removeDependency(std::string depName);
+
 
     /* getDependencies
        ---------------
        Returns the list of dependencies.
     */
 
-    const list<Node*>* getDependencies() const;
+    const std::list<Node*>* getDependencies() const;
 
 };
 

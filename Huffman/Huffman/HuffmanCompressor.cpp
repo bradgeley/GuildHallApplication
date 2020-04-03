@@ -5,10 +5,12 @@
 
 /* compressFile
    ------------
-   Since the bit representation of each byte is of varying length,
-   this is a quite complicated function. We step through the string of data,
-   finding the binary representation and then filling the remainder of the current
-   8-bit mask.
+   Write the binary tree key into the compressed file, then step through 
+   the file of data byte by byte, doing the following for each:
+
+   1. Find the bit representation of the byte as given by the binary tree
+   2. Fill as much of an 8-bit mask as we can with those bits, then get a new mask if we need to
+   3. If necessary, fill mask 2 with some of the bits we could not fit into mask 1
 
    Once the 8-bit mask is full, it is ready to be pushed to the compressed file.
    At the end of the file there are anywhere between 0-7 trailing 0's. If the last mask 
@@ -18,9 +20,11 @@
 
    Compressed file structure:
 
-   ------------------------------------------------------------------------------------------------------------------------
-   |  Binary Tree(<1KB)  |  Sentinel(1B)  |  Compressed Data(Any size)  |  Trailing Zeros (<1B)  |  # Trailing Zeros(1B)  |
-   ------------------------------------------------------------------------------------------------------------------------
+   ------------------------------------------------------------------------------------------
+   |               |            |                   |                  |                    |
+   |  Binary Tree  |  Sentinel  |  Compressed Data  |  Trailing Zeros  |  # Trailing Zeros  |
+   |    (<1KB)     |    (1B)    |    (Any Size)     |      (<1B)       |        (1B)        |
+   ------------------------------------------------------------------------------------------
 
    */
 
@@ -110,18 +114,23 @@ void HuffmanCompressor::compressFile(string infileName, string outfileName) {
 /* DecompressFile
    --------------
    Decompresses the binary tree and uses it to step bit by bit through a file.
-   This process is rather slow for large files since we look through the whole
-   tree for each bit we find, and gather data only one byte at a time.
+   This process is rather slow for large files since we look at each bit
+   one at a time. The process is as follows:
 
-   The data in the file contains a number of trailing zeros, the number of which
-   is contained in a 1 byte footer at the end of the file. Once we read this,
-   we know how many zeros to ignore at the end of the file.
+   1. Read a bit from the current byte being looked at
+   2. Step through the binary tree (1 means right, 0 means left)
+   3. If necessary, gather a new byte of data.
+   4. If we find a leaf, then output the character on that leaf to the outfile, then reset tree.
+   5. If we reach the second to last byte, compare the bit index to the number of trailing zeros,
+        which was stored in the last byte.
 
    Compressed file structure:
 
-   ------------------------------------------------------------------------------------------------------------------------
-   |  Binary Tree(<1KB)  |  Sentinel(1B)  |  Compressed Data(Any size)  |  Trailing Zeros (<1B)  |  # Trailing Zeros(1B)  |
-   ------------------------------------------------------------------------------------------------------------------------
+   ------------------------------------------------------------------------------------------
+   |               |            |                   |                  |                    |
+   |  Binary Tree  |  Sentinel  |  Compressed Data  |  Trailing Zeros  |  # Trailing Zeros  |
+   |    (<1KB)     |    (1B)    |    (Any Size)     |      (<1B)       |        (1B)        |
+   ------------------------------------------------------------------------------------------
 
 */
 
@@ -212,8 +221,8 @@ void HuffmanCompressor::decompressFile(string compressedFile, string outputFile)
 
 /* getFileLength 
    -------------
-   Step to the end of the file (- 1) and return the length
-   so we can refer to it later.
+   Step to the second to last byte of data, excluding the footer,
+   and retrieve the length.
 */
 
 const uint32_t HuffmanCompressor::getFileLength(ifstream& infile) const {

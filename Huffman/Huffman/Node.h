@@ -44,7 +44,8 @@ public:
     bool operator <= (Node const& n);
 
 
-    /* Functions */
+    /* Methods */
+
 
     /* destroyNode
        -----------

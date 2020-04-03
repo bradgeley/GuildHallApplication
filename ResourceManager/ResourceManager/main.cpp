@@ -8,7 +8,7 @@ using namespace std;
 
 
 
-/* Constants */
+/* Resources Filename */
 
 string FILENAME = "Resource.txt";
 
@@ -22,6 +22,8 @@ void deleteResource(ResourceManager& rm);
 
 void addResource(ResourceManager& rm);
 
+void saveData(ResourceManager& rm, string filename);
+
 
 
 /* main
@@ -34,7 +36,7 @@ void addResource(ResourceManager& rm);
    Resource Dependency2
 
    Then starts an input loop where a user may add or delete resources
-   as they see fit.
+   as they see fit, and may choose to save at any time.
 */
 
 int main()
@@ -62,6 +64,9 @@ int main()
         else if (input == "add") {
             addResource(rm);
         }
+        else if (input == "save") {
+            saveData(rm, FILENAME);
+        }
     }
 }
 
@@ -83,6 +88,9 @@ void printHelpMessage() {
     cout << "To delete objects type:" << endl;
     cout << "delete name" << endl;
 
+    cout << "To save type:" << endl;
+    cout << "save" << endl;
+
     cout << "Type q to quit." << endl;
     cout << setw(20) << setfill('-') << "" << endl << endl;
 
@@ -98,12 +106,8 @@ void printHelpMessage() {
 
 void deleteResource(ResourceManager& rm) {
     string res;
-    if (cin >> res) {
-        rm.removeResource(res);
-    }
-    else {
-        cout << "Enter resource to delete." << endl;
-    }
+    cin >> res;
+    rm.removeResource(res);
 }
 
 
@@ -117,12 +121,18 @@ void deleteResource(ResourceManager& rm) {
 
 void addResource(ResourceManager& rm) {
     string obj, res;
-    if (cin >> obj) {
-        if (cin >> res) {
-            rm.addResource(obj, res);
-        }
-        else {
-            cout << "Please enter an object and its resource." << endl;
-        }
-    }
+    cin >> obj;
+    cin >> res;
+    rm.addResource(obj, res);
+}
+
+
+/* saveData
+   --------
+   Overwrites Resource.txt with the new data entered in this
+   session.
+   */
+
+void saveData(ResourceManager& rm, string filename) {
+    rm.saveFile(filename);
 }

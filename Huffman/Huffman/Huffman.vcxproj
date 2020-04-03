@@ -157,7 +157,6 @@
     <Text Include="Text.txt" />
     <Text Include="Compressed.txt" />
     <Text Include="Decompressed.txt" />
-    <Text Include="Text1.txt" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrequencyMap.h" />

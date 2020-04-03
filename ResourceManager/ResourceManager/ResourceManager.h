@@ -2,8 +2,6 @@
 
 #include "Node.h"
 
-using namespace std;
-
 
 
 /* Resource Manager
@@ -12,9 +10,8 @@ using namespace std;
    for the logic of adding and deleting resources, as well
    as printing itself and reading a file of formatted input.
 
-   Resources themselves will keep track of their dependencies
-   on other resources, which they do by pointing back to
-   the Nodes on this resource manager's list.
+   The resource Nodes themselves will keep track of their dependencies
+   on other resources.
 */
 
 
@@ -30,9 +27,15 @@ public:
 
 private:
 
-    list<Node*>* resources;
+    /* Private data */
+
+    std::list<Node*>* resources;
 
 public:
+
+
+    /* Public Interface */
+
 
     /* containsResource 
        ----------------
@@ -40,17 +43,17 @@ public:
        in the current list of resources.
     */
 
-    bool containsResource(string resourceName) const;
+    bool resourceExists(std::string resourceName) const;
 
 
     /* addResource
        -----------
        Creates new Nodes for each name given, if they do
-       not already exist. Then connects the Node with name
-       to the dependency node.
+       not already exist. Then connects the lhs Node to its
+       dependency Node.
     */
 
-    void addResource(string name, string nameOfDependency);
+    void addResource(std::string resourceName, std::string nameOfDependency);
 
 
     /* getResource
@@ -59,21 +62,21 @@ public:
        resourceName given.
     */  
 
-    const Node* getResource(string resourceName) const;
+    const Node* getResource(std::string resourceName) const;
 
-    Node* getResource(string resourceName);
+    Node* getResource(std::string resourceName);
 
 
     /* removeResource
        --------------
        Removes the resource with the given name from resources. 
        
-       However, in order to maintain a functioning resource list,
-       this function also calls each Node in the list
+       In order to maintain a functioning resource list,
+       this function also calls on each Node in resources
        to purge that resource from its dependencies.
     */
 
-    void removeResource(string name);
+    void removeResource(std::string resourceName);
 
 
     /* readFile
@@ -82,37 +85,66 @@ public:
 
        resource dependency
        resource2 dependency2
-       resource3 dependency2
+       resource3 resource2
 
        For each resource and dependency, create a Node if
        one did not already exist in the list. Then connect
        them if they are not already connected.
     */
 
-    void readFile(string filename);
+    void readFile(std::string filename);
+
+
+    /* saveFile
+       --------
+       Saves the new data added in this editing session
+       to a given filename, formatted as such:
+
+       resource dependency
+       resource2 dependency2
+       resource3 resource2
+    */
+
+    void saveFile(std::string filename);
 
 
     /* print
        -----
-       Makes heavy use of <iomanip> formatters in order to
-       create an output that looks like the following:
+       Creates an output that looks like the following:
 
-       Resources Dependencies
-       -------------------
-       |res1    |dep1    |
-       |        |dep2    |
-       -------------------
-       |res2    |dep1    |
-       |        |dep2    |
-       -------------------
+        Resource     Dependency
+        -----------------------------
+        |res1       |dep1           |
+        |           |dep2           |
+        -----------------------------
+        |res2       |dep1           |
+        |           |dep2           |
+        -----------------------------
+        |dep1       |no dependencies|
+        -----------------------------
+        |dep3       |unusable       |
+        -----------------------------
 
-       Cuts down each name to be a maximum length, and does
-       not show resources with no dependencies since they are
-       currently invalid. Resources that only exist as a 
-       dependency for another Node are in this category.
+        Resources with no dependencies are still valid,
+        since they may be depended upon by another resource.
+
+        Unusable nodes are not connected to anything and
+        are not depended on by another resource.
 
     */
 
-    const void print() const;
+    void print() const;
+
+private:
+
+    /* Private print() Helper Methods */
+
+    void printHeader(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const;
+
+    void printUnusableResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const;
+
+    void printNoDependencyResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const;
+
+    void printNormalResources(const size_t& MAX_NAME_LEN, const size_t& totalWidth) const;
 
 };
